@@ -3,6 +3,7 @@ import scala.slick.collection.heterogenous._
 import scala.slick.collection.heterogenous.syntax._
 import scala.slick.jdbc._
 
+// This is the large case class we are mapping -- 25 string fields:
 case class BigData(
   field1: String,
   field2: String,
@@ -31,7 +32,11 @@ case class BigData(
   field25: String
 )
 
+// The remainder of the code demonstrates mapping the `BigData` class using Slick:
 object ExampleQueries {
+
+  // This is the table for `BigData`. Because we have >22 fields,
+  // we have to use Slick's `HList` mappings:
   class BigDataTable(tag: Tag) extends Table[BigData](tag, "bigdata") {
     def field1 = column[String]("field1")
     def field2 = column[String]("field2")
@@ -59,6 +64,11 @@ object ExampleQueries {
     def field24 = column[String]("field24")
     def field25 = column[String]("field25")
 
+    // The `*` projection uses `<>` to bidirectionally map the
+    // `HList` to a `BigData` object.
+    //
+    // For clarity I have separated the mapping functions out
+    // into separate methods below:
     def * = (
       field1 ::
       field2 ::
@@ -88,6 +98,8 @@ object ExampleQueries {
       HNil
     ) <> (createBigData, extractBigData)
 
+    // Here I'm defining the type of the HList so I don't have
+    // to write it inline in the method definitions below:
     type BigDataHList =
       String ::
       String ::
@@ -116,6 +128,7 @@ object ExampleQueries {
       String ::
       HNil
 
+    // Mapping from HList to BigData:
     def createBigData(data: BigDataHList): BigData = data match {
       case field1 ::
            field2 ::
@@ -146,6 +159,7 @@ object ExampleQueries {
         BigData(field1, field2, field3, field4, field5, field6, field7, field8, field9, field10, field11, field12, field13, field14, field15, field16, field17, field18, field19, field20, field21, field22, field23, field24, field25)
     }
 
+    // Mapping from BigData to HList:
     def extractBigData(data: BigData): Option[BigDataHList] = data match {
       case BigData(field1, field2, field3, field4, field5, field6, field7, field8, field9, field10, field11, field12, field13, field14, field15, field16, field17, field18, field19, field20, field21, field22, field23, field24, field25) =>
         Some(
@@ -179,8 +193,12 @@ object ExampleQueries {
     }
   }
 
+  // Query singleton:
   val BigDataTable = TableQuery[BigDataTable]
 
-  def exampleQuery = BigDataTable.filter(_.field1 === "somevalue")
+  // And finally an example query. The important thing
+  // here is that this returns a `List[BigData]` (and type checks):
+  def findBigDataByField1(field1: String)(implicit session: Session): List[BigData] =
+    BigDataTable.filter(_.field1 === field1).list
 }
 
